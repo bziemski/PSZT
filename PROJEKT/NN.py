@@ -6,23 +6,21 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 
 import keras
-from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D
-from keras.utils import plot_model, np_utils
-from keras import backend as K
+from keras.utils import np_utils
 import numpy as np
 import cv2
 
 # nvidia-smi
 # tensorboard --logdir=Graph
 batch_size = 128
-num_classes = 2
+num_classes = 5
 epochs = 20
-img_rows = 32
-img_cols = 32
-histogram_freq=0
+img_rows = 64
+img_cols = 64
+histogram_freq = 0
 
 
 def image_to_feature_vector(image, size=(img_rows, img_cols)):
@@ -33,7 +31,12 @@ def image_to_feature_vector(image, size=(img_rows, img_cols)):
 
 # grab the list of images that we'll be describing
 print("[INFO] describing images...")
-imagePaths = glob.glob('./data/*.jpg')
+imagePaths = []
+imagePaths += glob.glob('./data/daisy/*.jpg')
+imagePaths += glob.glob('./data/sunflower/*.jpg')
+imagePaths += glob.glob('./data/rose/*.jpg')
+imagePaths += glob.glob('./data/tulip/*.jpg')
+imagePaths += glob.glob('./data/dandelion/*.jpg')
 
 # initialize the data matrix and labels list
 data = []
@@ -44,7 +47,7 @@ for (i, imagePath) in enumerate(imagePaths):
     # load the image and extract the class label (assuming that our
     # path as the format: /path/to/dataset/{class}.{image_num}.jpg
     image = cv2.imread(imagePath)
-    label = imagePath.split(os.path.sep)[-1].split(".")[0]
+    label = imagePath.split(os.path.sep)[-2]
 
     # construct a feature vector raw pixel intensities, then update
     # the data matrix and labels list
@@ -65,7 +68,7 @@ labels = le.fit_transform(labels)
 # generates a vector for each label where the index of the label
 # is set to `1` and all other entries to `0`
 data = np.array(data) / 255.0
-labels = np_utils.to_categorical(labels, 2)
+labels = np_utils.to_categorical(labels, num_classes)
 
 # partition the data into training and testing splits, using 75%
 # of the data for training and the remaining 25% for testing
@@ -90,7 +93,6 @@ model.add(Dense(1024, activation='relu'))
 model.add(Dropout(0.4))
 model.add(Dense(num_classes, activation='softmax'))
 
-# train the model using SGD
 print("[INFO] compiling model...")
 
 model.compile(loss=keras.losses.categorical_crossentropy,
@@ -103,14 +105,15 @@ log_path = './Graph/' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 tb_callback = keras.callbacks.TensorBoard(
     log_dir=log_path,
     histogram_freq=histogram_freq,
-    write_graph=True
+    write_graph=True,
+    write_images=True
 )
 
 tb_callback.set_model(model)
 
 # Train net:
-history = model.fit(trainData, trainLabels, epochs=epochs, batch_size=batch_size,
-                    verbose=1, callbacks=[tb_callback],validation_data=([testData], [testLabels])).history
+model.fit(trainData, trainLabels, epochs=epochs, batch_size=batch_size,
+          verbose=1, callbacks=[tb_callback], validation_data=([testData], [testLabels]))
 
 # show the accuracy on the testing set
 print("[INFO] evaluating on testing set...")
